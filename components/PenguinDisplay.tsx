@@ -5,20 +5,13 @@ import { View, Image, StyleSheet } from 'react-native';
 
 interface PenguinDisplayProps {
    percentage: number;
+   mood: 'happy' | 'sad' | 'angry' | 'neutral';
 }
 
 
-export default function PenguinDisplay({ percentage }: PenguinDisplayProps) {
-   const getPenguinState = () => {
-       if (percentage > 100) return 'angry';
-       if (percentage === 100) return 'sad';
-       if (percentage < 70) return 'happy';
-       return 'neutral';
-   };
-
-
+export default function PenguinDisplay({ percentage, mood }: PenguinDisplayProps) {
    const getPenguinImage = () => {
-       switch (getPenguinState()) {
+       switch (mood) {
            case 'happy':
                return require('../assets/images/happy-penguin.png');
            case 'sad':

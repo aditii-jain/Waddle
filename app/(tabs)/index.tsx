@@ -7,9 +7,39 @@ import PenguinDisplay from '@/components/PenguinDisplay';
 import LogModal from '@/components/LogModal';
 
 export default function HomeScreen() {
-  const [carbonValue, setCarbonValue] = useState(80);
+  const [carbonValue, setCarbonValue] = useState(0);
   const carbonLimit = 100;
   const [isLogModalVisible, setIsLogModalVisible] = useState(false);
+
+  const getProgressColor = (value: number) => {
+    const percentage = (value / carbonLimit) * 100;
+    if (percentage <= 33) return '#417F3D'; // Green
+    if (percentage <= 66) return '#FFA500'; // Orange
+    return '#FF0000'; // Red
+  };
+
+  const getPenguinMood = (value: number) => {
+    const percentage = (value / carbonLimit) * 100;
+    if (percentage <= 33) return 'happy';
+    if (percentage <= 66) return 'angry';
+    return 'sad';
+  };
+
+  const calculateCarbonScore = (type: string, value: number) => {
+    let score = 0;
+    
+    if (type === 'food') {
+      // Assuming value is in grams, rough estimate of CO2 per gram of food
+      score = value * 0.05;
+    } else if (type === 'transportation') {
+      // Assuming value is in miles, rough estimate of CO2 per mile
+      score = value * 0.4;
+    }
+
+    const newCarbonValue = Math.min(carbonValue + score, carbonLimit);
+    setCarbonValue(newCarbonValue);
+    return newCarbonValue;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,15 +47,23 @@ export default function HomeScreen() {
         <Text style={styles.headerText}>
           Good Afternoon, <Text style={styles.nameText}>David!</Text>
         </Text>
+        <Text style={styles.carbonScore}>Carbon Score: {carbonValue.toFixed(1)}</Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.penguinWrapper}>
-          <PenguinDisplay percentage={(carbonValue / carbonLimit) * 100} />
+          <PenguinDisplay 
+            percentage={(carbonValue / carbonLimit) * 100} 
+            mood={getPenguinMood(carbonValue)}
+          />
         </View>
         
         <View style={styles.progressWrapper}>
-          <CarbonProgressBar currentValue={carbonValue} maxValue={carbonLimit} />
+          <CarbonProgressBar 
+            currentValue={carbonValue} 
+            maxValue={carbonLimit}
+            progressColor={getProgressColor(carbonValue)}
+          />
         </View>
       </View>
 
@@ -41,6 +79,7 @@ export default function HomeScreen() {
       <LogModal 
         isVisible={isLogModalVisible}
         onClose={() => setIsLogModalVisible(false)}
+        onSubmit={(type, value) => calculateCarbonScore(type, value)}
       />
     </SafeAreaView>
   );
@@ -83,7 +122,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 90,
+    bottom: 30,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
@@ -105,5 +144,11 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 6,
     borderColor: '#E8F5E9',
+  },
+  carbonScore: {
+    fontSize: 18,
+    color: '#417F3D',
+    fontWeight: '600',
+    marginTop: 8,
   },
 });

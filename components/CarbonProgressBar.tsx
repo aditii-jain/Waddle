@@ -6,12 +6,14 @@ import { View, Text, StyleSheet } from 'react-native';
 interface CarbonProgressBarProps {
    currentValue: number;
    maxValue: number;
+   progressColor: string;
 }
 
 
-export default function CarbonProgressBar({ currentValue, maxValue }: CarbonProgressBarProps) {
+export default function CarbonProgressBar({ currentValue, maxValue, progressColor }: CarbonProgressBarProps) {
    const percentage = (currentValue / maxValue) * 100;
    const isOverLimit = percentage > 100;
+   const isCloseToLimit = percentage >= 66;
 
 
    return (
@@ -22,13 +24,15 @@ export default function CarbonProgressBar({ currentValue, maxValue }: CarbonProg
                        styles.progressFill,
                        {
                            width: `${Math.min(percentage, 100)}%`,
-                           backgroundColor: isOverLimit ? '#FF0000' : '#000000',
+                           backgroundColor: progressColor,
                        },
                    ]}
                />
            </View>
            <Text style={styles.progressText}>
-               You are {isOverLimit ? 'over' : 'close to'} your carbon limit goal for today.
+               {isOverLimit ? "You are over your carbon limit goal for today." :
+                isCloseToLimit ? "You are close to your carbon limit goal for today." :
+                "Track your carbon footprint for today."}
            </Text>
        </View>
    );

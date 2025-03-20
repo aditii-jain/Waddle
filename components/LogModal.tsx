@@ -12,13 +12,14 @@ import {
 interface LogModalProps {
   isVisible: boolean;
   onClose: () => void;
+  onSubmit: (type: string, value: number) => void;
 }
 
 type ActionType = 'Transportation' | 'Food' | null;
 type TransportationType = 'SUV' | 'Sedan' | 'Bus' | 'Plane' | null;
 type FoodType = 'Beef' | 'Chicken' | 'Vegetables' | 'Fruits' | null;
 
-export default function LogModal({ isVisible, onClose }: LogModalProps) {
+export default function LogModal({ isVisible, onClose, onSubmit }: LogModalProps) {
   const [actionType, setActionType] = useState<ActionType>(null);
   const [transportationType, setTransportationType] = useState<TransportationType>(null);
   const [foodType, setFoodType] = useState<FoodType>(null);
@@ -34,6 +35,16 @@ export default function LogModal({ isVisible, onClose }: LogModalProps) {
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleSubmit = () => {
+    if (!actionType || !quantity) return;
+
+    const numericQuantity = parseFloat(quantity);
+    if (isNaN(numericQuantity)) return;
+
+    onSubmit(actionType.toLowerCase(), numericQuantity);
+    handleClose();
   };
 
   return (
@@ -137,7 +148,7 @@ export default function LogModal({ isVisible, onClose }: LogModalProps) {
             </>
           )}
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleClose}>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Text style={styles.submitButtonText}>Submit</Text>
           </TouchableOpacity>
         </View>
