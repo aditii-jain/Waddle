@@ -1,7 +1,8 @@
-import { StyleSheet, View, TextInput, ScrollView, Text, Image } from 'react-native';
+import { StyleSheet, View, TextInput, ScrollView, Text, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useMemo } from 'react';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { getChatResponse } from '@/services/chatService';
 
 // Static data for sections with real images
 const SECTIONS_DATA = [
@@ -43,8 +44,21 @@ const SECTIONS_DATA = [
   },
 ];
 
+type TabType = 'Actions' | 'Chat';
+
+const PenguinIcon = () => (
+  <Image 
+    source={require('@/assets/images/happy-penguin.png')} 
+    style={styles.penguinIcon}
+  />
+);
+
 export default function SearchScreen() {
+  const [activeTab, setActiveTab] = useState<TabType>('Actions');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -65,62 +79,148 @@ export default function SearchScreen() {
       );
   }, [searchQuery]);
 
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    
+    // Add user message to chat
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    setIsLoading(true);
+    try {
+      const response = await getChatResponse(userMessage);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error) {
+      console.error('Error:', error);
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "I'm having trouble connecting right now. Please try again later! 🐧" 
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.pageTitle}>Actions</Text>
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputWrapper}>
-          <IconSymbol 
-            name="magnifyingglass" 
-            size={20} 
-            color="#666"
-            style={styles.searchIcon} 
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search actions"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-        </View>
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'Actions' && styles.activeTab]}
+          onPress={() => setActiveTab('Actions')}
+        >
+          <Text style={[styles.tabText, activeTab === 'Actions' && styles.activeTabText]}>
+            Actions
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'Chat' && styles.activeTab]}
+          onPress={() => setActiveTab('Chat')}
+        >
+          <Text style={[styles.tabText, activeTab === 'Chat' && styles.activeTabText]}>
+            Talk to Penguin
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView}>
-        {filteredSections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <ScrollView 
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.cardsScrollContainer,
-                section.cards.length === 0 && styles.emptyContainer
-              ]}
+      {activeTab === 'Actions' ? (
+        <>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputWrapper}>
+              <IconSymbol 
+                name="magnifyingglass" 
+                size={20} 
+                color="#666"
+                style={styles.searchIcon} 
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search actions"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+            </View>
+          </View>
+
+          <ScrollView style={styles.scrollView}>
+            {filteredSections.map((section) => (
+              <View key={section.title} style={styles.section}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <ScrollView 
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={[
+                    styles.cardsScrollContainer,
+                    section.cards.length === 0 && styles.emptyContainer
+                  ]}
+                >
+                  {section.cards.length > 0 ? (
+                    section.cards.map((card) => (
+                      <View key={card.id} style={styles.card}>
+                        <Image 
+                          source={{ uri: card.imageUrl }} 
+                          style={styles.cardImage}
+                        />
+                        <Text style={styles.cardText}>{card.name}</Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noResultsText}>No actions found</Text>
+                  )}
+                </ScrollView>
+              </View>
+            ))}
+          </ScrollView>
+        </>
+      ) : (
+        <View style={styles.chatContainer}>
+          <ScrollView style={styles.chatMessages}>
+            {chatMessages.map((message, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.messageContainer,
+                  message.role === 'user' ? styles.userMessage : styles.assistantMessage
+                ]}
+              >
+                {message.role === 'assistant' && <PenguinIcon />}
+                <Text style={[
+                  styles.messageText,
+                  message.role === 'assistant' ? styles.assistantMessageText : styles.userMessageText
+                ]}>
+                  {message.content}
+                </Text>
+              </View>
+            ))}
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Penguin is thinking...</Text>
+              </View>
+            )}
+          </ScrollView>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Ask the penguin for eco-friendly advice..."
+              value={chatInput}
+              onChangeText={setChatInput}
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSendMessage}
+            />
+            <TouchableOpacity 
+              style={styles.sendButton} 
+              onPress={handleSendMessage}
+              disabled={isLoading}
             >
-              {section.cards.length > 0 ? (
-                section.cards.map((card) => (
-                  <View key={card.id} style={styles.card}>
-                    <Image 
-                      source={{ uri: card.imageUrl }} 
-                      style={styles.cardImage}
-                    />
-                    <Text style={styles.cardText}>{card.name}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noResultsText}>No actions found</Text>
-              )}
-            </ScrollView>
+              <IconSymbol name="arrow.up.circle.fill" size={32} color="#417F3D" />
+            </TouchableOpacity>
           </View>
-        ))}
-        {filteredSections.length === 0 && (
-          <View style={styles.noResultsContainer}>
-            <Text style={styles.noResultsText}>No actions found</Text>
-          </View>
-        )}
-      </ScrollView>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -208,6 +308,97 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 16,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    padding: 4,
+    margin: 16,
+    borderRadius: 8,
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  activeTab: {
+    backgroundColor: '#417F3D',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  chatContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  chatMessages: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  messageContainer: {
+    maxWidth: '80%',
+    marginVertical: 8,
+    padding: 12,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  userMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#417F3D',
+  },
+  assistantMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5F5F5',
+    paddingLeft: 8,
+    marginLeft: 36,
+  },
+  messageText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  userMessageText: {
+    color: '#fff',
+  },
+  assistantMessageText: {
+    color: '#417F3D',
+  },
+  penguinIcon: {
+    width: 32,
+    height: 32,
+    position: 'absolute',
+    left: -36,
+    top: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    padding: 8,
+  },
+  chatInput: {
+    flex: 1,
+    padding: 8,
+    fontSize: 16,
+    maxHeight: 100,
+  },
+  sendButton: {
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  loadingText: {
     color: '#666',
     fontStyle: 'italic',
   },
